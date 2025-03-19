@@ -1,5 +1,5 @@
 class Ticket:
-    def __init__(self, content: str, metadata: dict):
-        self.content = content
+    def __init__(self, text: str, metadata: dict):
+        self.text = text
         self.metadata = metadata
     
