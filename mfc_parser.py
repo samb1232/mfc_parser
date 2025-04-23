@@ -2,8 +2,15 @@ import requests
 from bs4 import BeautifulSoup
 from models import db, Ticket
 from celery import Celery
+from config import Config
+from flask_app import create_app
 
-celery = Celery(__name__, broker='redis://localhost:6379/0')
+celery = Celery(__name__, broker=Config.CELERY_BROKER_URL, backend=Config.CELERY_RESULT_BACKEND)
+
+def make_celery_app():
+    app = create_app()
+    return app
+
 
 def parse_mfc_tickets_from_url(url: str, url_id: int):
     response = fetch_url(url)
@@ -44,6 +51,7 @@ def parse_mfc_tickets_from_url(url: str, url_id: int):
             link=url
         )]
 
+
 def fetch_url(url: str) -> requests.Response:
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -51,11 +59,14 @@ def fetch_url(url: str) -> requests.Response:
     response = requests.get(url, headers=headers)
     return response
 
+
 def check_if_url_contains_li(soup: BeautifulSoup) -> bool:
     return len(soup.find_all('div', class_="accordion")) > 0
 
+
 def check_if_page_is_empty(soup: BeautifulSoup) -> bool:
     return len(soup.find('div', class_="page-caption").get_text(strip=True)) == 0
+
 
 def get_div_text_content(soup: BeautifulSoup, classname: str) -> str:
     class_encounters = soup.find_all('div', class_=classname)
@@ -65,16 +76,21 @@ def get_div_text_content(soup: BeautifulSoup, classname: str) -> str:
         res_text += "\n\n"
     return res_text.replace(":", ": ")
 
+
 @celery.task
 def update_mfc_db():
-    for id in range(1, 2000):
-        url_to_parse = f"https://mfc66.ru/services/item?id={id}"
-        parsed_tickets = parse_mfc_tickets_from_url(url_to_parse, id)
-        if len(parsed_tickets) == 0:
-            print(f"Empty Page. Skipping {id}")
-            continue
-        for ticket in parsed_tickets:
-            save_ticket(ticket)
+    app = make_celery_app()
+    with app.app_context():
+        for id in range(1, 2000):
+            print(f"Parsing task {id}")
+            url_to_parse = f"https://mfc66.ru/services/item?id={id}"
+            parsed_tickets = parse_mfc_tickets_from_url(url_to_parse, id)
+            if len(parsed_tickets) == 0:
+                print(f"Empty Page. Skipping {id}")
+                continue
+            for ticket in parsed_tickets:
+                save_ticket(ticket)
+
 
 def save_ticket(ticket: Ticket):
     db.session.merge(ticket)

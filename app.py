@@ -1,15 +1,16 @@
-from flask import Flask, jsonify
-from config import Config
+from flask import jsonify
 from models import db, Ticket
 from tasks import update_mfc_db_task
 from celery.result import AsyncResult
-from parser import celery
+from mfc_parser import celery
+from flask_app import create_app
 
-app = Flask(__name__)
-app.config.from_object(Config)
-db.init_app(app)
+app = create_app()
 
 update_task = None
+
+with app.app_context():
+    db.create_all()
 
 @app.route('/update_mfc_db', methods=['POST'])
 def update_mfc_db():
@@ -42,4 +43,5 @@ def get_situation_by_id(ticket_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+
+    app.run(debug=False)

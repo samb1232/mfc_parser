@@ -1,7 +1,10 @@
 from celery import Celery
-from parser import update_mfc_db
+from mfc_parser import update_mfc_db
 
-celery = Celery(__name__, broker='redis://localhost:6379/0')
+from config import Config
+
+celery = Celery(__name__, broker=Config.CELERY_BROKER_URL, backend=Config.CELERY_RESULT_BACKEND)
+
 
 @celery.task
 def update_mfc_db_task():
