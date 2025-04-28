@@ -1,0 +1,14 @@
+# Базовый образ Python
+FROM python:3.11-slim
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Копируем все файлы проекта внутрь контейнера
+COPY . .
+
+# Устанавливаем ВСЕ зависимости
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Запускаем скрипт синхронизации
+CMD ["python", "sync_pg_chroma.py"]

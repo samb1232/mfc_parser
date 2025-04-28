@@ -40,5 +40,16 @@ services:
     ports:
       - "6379:6379"
 
+  sync:
+    build:
+      context: .
+      dockerfile: Dockerfile.sync_pg_chroma
+    depends_on:
+      - db
+    environment:
+      - FLASK_ENV=development
+    restart: on-failure
+
+
 volumes:
   postgres_data:
