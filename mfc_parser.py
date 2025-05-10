@@ -1,13 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
 from models import db, Ticket
-from celery import Celery
-from config import Config
 from flask_app import create_app
 
-celery = Celery(__name__, broker=Config.CELERY_BROKER_URL, backend=Config.CELERY_RESULT_BACKEND)
 
-def make_celery_app():
+def make_flask_app():
     app = create_app()
     return app
 
@@ -77,9 +74,8 @@ def get_div_text_content(soup: BeautifulSoup, classname: str) -> str:
     return res_text.replace(":", ": ")
 
 
-@celery.task
 def update_mfc_db():
-    app = make_celery_app()
+    app = make_flask_app()
     with app.app_context():
         for id in range(1, 2000):
             print(f"Parsing task {id}")
