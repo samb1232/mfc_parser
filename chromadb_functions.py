@@ -52,3 +52,28 @@ def get_situation_from_chromadb_by_id(ticket_id):
             "document": result['documents'][0]
         }
     return {"status": "not_found"}
+
+
+def search_chroma_by_text(query_text, top_k=3):
+    client = chromadb.Client(Settings())
+    collection = client.get_or_create_collection(
+        name="mfc_tickets",
+        embedding_function=DefaultEmbeddingFunction()
+    )
+
+    result = collection.query(
+        query_texts=[query_text],
+        n_results=top_k
+    )
+
+    return {
+        "query": query_text,
+        "results": [
+            {
+                "id": result["ids"][0][i],
+                "text": result["documents"][0][i],
+                "distance": result["distances"][0][i]
+            }
+            for i in range(len(result["ids"][0]))
+        ]
+    }

@@ -1,10 +1,13 @@
+import redis
 from chromadb_functions import get_situation_from_chromadb_by_id
-from flask import jsonify
+from chromadb_functions import search_chroma_by_text
+from flask import jsonify, request
 from models import db, Ticket
 from tasks import update_mfc_db_task, update_chromadb_task
 from celery.result import AsyncResult
 from tasks import celery
 from flask_app import create_app
+from config import Config
 
 app = create_app()
 
@@ -28,13 +31,13 @@ def update_chromadb():
 
 @app.route('/is_updating', methods=['GET'])
 def is_updating():
-    if update_task:
-        task_result = AsyncResult(update_task.id, app=celery)
-        if task_result.state == 'PENDING':
-            return jsonify({"status": "Update in progress"})
-        else:
-            return jsonify({"status": "Update completed"})
-    return jsonify({"status": "No update in progress"})
+    redis_client = redis.StrictRedis.from_url(Config.CELERY_BROKER_URL)
+    is_updating = redis_client.get("is_updating")
+
+    if is_updating and is_updating.decode() == "1":
+        return jsonify({"status": "Update in progress"})
+    else:
+        return jsonify({"status": "Update completed"})
 
 @app.route('/is_chromadb_updating', methods=['GET'])
 def is_chromadb_updating():
@@ -61,6 +64,14 @@ def get_situation_by_id(ticket_id):
 @app.route('/get_situation_from_chromadb_by_id/<string:ticket_id>', methods=['GET'])
 def get_situation_from_vectordb_by_id(ticket_id):
     result = get_situation_from_chromadb_by_id(ticket_id)
+    return jsonify(result)
+
+@app.route('/search_chroma', methods=['GET'])
+def search_chroma():
+    query = request.args.get("q")
+    if not query:
+        return jsonify({"error": "Missing query parameter `q`"}), 400
+    result = search_chroma_by_text(query)
     return jsonify(result)
 
 if __name__ == '__main__':
